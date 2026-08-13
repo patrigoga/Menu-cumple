@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Menú de cumpleaños — Alejandro Gómez Córdoba</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Great+Vibes&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg-0:#14100c;
@@ -146,7 +149,7 @@
     font-size:13px; color:var(--muted); font-style:italic; margin-top:6px;
   }
 
-  button.submit{
+  button.submit, a.submit{
     width:100%;
     margin-top:8px;
     padding:15px;
@@ -160,9 +163,10 @@
     letter-spacing:1.5px;
     text-transform:uppercase;
     cursor:pointer;
+    text-align:center;
   }
   button.submit:disabled{opacity:0.6; cursor:default;}
-  button.submit:active{transform:translateY(1px);}
+  button.submit:active, a.submit:active{transform:translateY(1px);}
 
   .error-msg{
     color:var(--err);
@@ -190,33 +194,24 @@
   .thanks .recap div{margin-bottom:6px;}
   .thanks .recap b{color:var(--cream); font-weight:normal;}
 
-  .footer-note{
-    text-align:center;
-    margin-top:26px;
-    font-size:11px;
-    letter-spacing:1px;
-    color:#6c5f47;
+  .invite-block{ margin-top:8px; }
+  .invite-lead{
+    font-size:14px; font-style:italic; color:var(--muted); margin-bottom:14px;
   }
-  .footer-note button{
-    background:none;border:none;color:#6c5f47;font-size:11px;
-    text-decoration:underline; cursor:pointer; letter-spacing:1px;
-    font-family:inherit;
-  }
-
-  .admin{display:none;}
-  .admin.open{display:block;}
-  .admin h3{color:var(--gold-bright); font-size:16px; letter-spacing:1px; margin:0 0 12px; text-transform:uppercase;}
-  .guest-card{
+  #inviteCanvas{ display:none; }
+  #invitePreview{
+    width:100%;
+    max-width:100%;
+    border-radius:10px;
     border:1px solid var(--gold-soft);
-    border-radius:8px;
-    padding:12px 14px;
-    margin-bottom:10px;
-    font-size:13.5px;
+    margin-bottom:16px;
+    display:none;
   }
-  .guest-card .gname{color:var(--gold-bright); font-weight:bold; margin-bottom:4px; font-size:15px;}
-  .guest-card div{color:var(--cream); margin-bottom:2px;}
-  .guest-card .lbl{color:var(--muted);}
-  .empty-admin{color:var(--muted); font-style:italic; font-size:14px;}
+  a.download-btn{
+    display:block;
+    text-decoration:none;
+    box-sizing:border-box;
+  }
 </style>
 </head>
 <body>
@@ -282,16 +277,14 @@
       <p>Tu elección ha sido registrada.</p>
       <p>Nos vemos en la fiesta de Alejandro.</p>
       <div class="recap" id="recap"></div>
-    </div>
 
-    <div class="footer-note">
-      <button type="button" id="adminToggle">ver respuestas (organizador)</button>
-    </div>
-
-    <div class="admin" id="adminPanel">
-      <div class="divider"><span class="line"></span><span class="dot"></span><span class="line"></span></div>
-      <h3>Respuestas recibidas</h3>
-      <div id="adminList"></div>
+      <div class="invite-block">
+        <div class="divider"><span class="line"></span><span class="dot"></span><span class="line"></span></div>
+        <p class="invite-lead">Aquí tienes tu invitación personalizada</p>
+        <canvas id="inviteCanvas" width="1000" height="1360"></canvas>
+        <img id="invitePreview" alt="Invitación de cumpleaños">
+        <a id="downloadBtn" class="submit download-btn" download="invitacion-alejandro.png">Descargar mi invitación</a>
+      </div>
     </div>
 
   </div></div>
@@ -416,15 +409,6 @@ async function githubSaveResponse(submission){
   throw lastErr || new Error('No se pudo guardar');
 }
 
-async function githubReadPublic(){
-  // Lectura pública sin token, directamente del archivo raw del repositorio
-  const res = await fetch(RAW_FILE_URL + '?_=' + Date.now());
-  if (res.status === 404) return [];
-  if (!res.ok) throw new Error('HTTP ' + res.status);
-  const list = await res.json();
-  return Array.isArray(list) ? list : [];
-}
-
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   errorMsg.textContent = '';
@@ -475,53 +459,175 @@ function showThanks(sub){
     ['Para comer', sub.comida],
   ];
   recap.innerHTML = rows.map(r => `<div><span class="lbl">${r[0]}:</span> <b>${r[1]}</b></div>`).join('');
+
+  drawInvitation(sub.guestName);
 }
 
-// Organizer view
-const adminToggle = document.getElementById('adminToggle');
-const adminPanel = document.getElementById('adminPanel');
+// ====== TARJETA DE INVITACIÓN ======
+const PARTY_DATE = 'Sábado 15 de agosto';
+const PARTY_TIME = '18:00 h';
+const PARTY_LOCATION = 'El campo de la piscina';
 
-adminToggle.addEventListener('click', async () => {
-  const opening = !adminPanel.classList.contains('open');
-  if (opening) {
-    const code = window.prompt('Introduce la clave de organizador:');
-    if (code === null) return;
-    if (code.trim() !== '123456') {
-      alert('Clave incorrecta.');
-      return;
-    }
-  }
-  adminPanel.classList.toggle('open');
-  adminToggle.textContent = opening ? 'ocultar respuestas' : 'ver respuestas (organizador)';
-  if (opening) {
-    await loadAdmin();
-  }
-});
-
-async function loadAdmin(){
-  const list = document.getElementById('adminList');
-  list.innerHTML = '<div class="empty-admin">Cargando...</div>';
+async function drawInvitation(guestName){
   try {
-    const entries = await githubReadPublic();
-    if (!entries.length){
-      list.innerHTML = '<div class="empty-admin">Todavía no hay respuestas.</div>';
-      return;
+    await Promise.all([
+      document.fonts.load('700 60px "Playfair Display"'),
+      document.fonts.load('600 34px "Playfair Display"'),
+      document.fonts.load('90px "Great Vibes"'),
+      document.fonts.load('60px "Great Vibes"'),
+    ]);
+  } catch(e) { /* si las fuentes no cargan, se usan las de reserva */ }
+
+  const canvas = document.getElementById('inviteCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  const GOLD = '#C9A24B';
+  const GOLD_SOFT = '#8A6E33';
+  const GOLD_BRIGHT = '#E9C77B';
+  const CREAM = '#ECE0C8';
+  const MUTED = '#B9A57C';
+
+  // Fondo
+  const grad = ctx.createRadialGradient(W/2, H*0.25, 60, W/2, H*0.6, H*0.9);
+  grad.addColorStop(0, '#2b241c');
+  grad.addColorStop(0.55, '#1c1712');
+  grad.addColorStop(1, '#14100c');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Marco doble
+  ctx.strokeStyle = GOLD;
+  ctx.lineWidth = 4;
+  ctx.strokeRect(34, 34, W - 68, H - 68);
+  ctx.strokeStyle = GOLD_SOFT;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(50, 50, W - 100, H - 100);
+
+  ctx.textAlign = 'center';
+
+  // Elige el tamaño de letra del nombre según su longitud, para que siempre quepa en 1-2 líneas
+  const nameMaxWidth = W - 220;
+  let nameFontSize = 90;
+  let nameLines = [(guestName || 'Invitado/a')];
+  for (const size of [90, 74, 60, 50]){
+    ctx.font = size + 'px "Great Vibes", cursive';
+    const lines = wrapText(ctx, guestName || 'Invitado/a', nameMaxWidth);
+    if (lines.length <= 2 || size === 50){
+      nameFontSize = size;
+      nameLines = lines;
+      break;
     }
-    entries.sort((a,b) => (a.submittedAt || '').localeCompare(b.submittedAt || ''));
-    list.innerHTML = entries.map(sub => `
-      <div class="guest-card">
-        <div class="gname">${sub.guestName}</div>
-        <div><span class="lbl">Alergias:</span> ${sub.allergies || '—'}</div>
-        <div><span class="lbl">Entrantes:</span> ${(sub.entrantes && sub.entrantes.length) ? sub.entrantes.join(', ') : '—'}</div>
-        <div><span class="lbl">Tarta:</span> ${sub.tarta}</div>
-        <div><span class="lbl">Con la tarta:</span> ${sub.tartaBebida}</div>
-        <div><span class="lbl">Bebida:</span> ${sub.bebidas}</div>
-        <div><span class="lbl">Para comer:</span> ${sub.comida}</div>
-      </div>
-    `).join('');
-  } catch (err){
-    list.innerHTML = '<div class="empty-admin">No se pudieron cargar las respuestas.</div>';
   }
+  const nameLineHeight = nameFontSize * 1.05;
+
+  // ---- Layout con cursor vertical: cada bloque avanza según lo que ocupa el anterior ----
+  let y = 150;
+
+  ctx.fillStyle = GOLD;
+  ctx.font = '32px Georgia';
+  ctx.fillText('✦   ✦   ✦', W/2, y);
+
+  y += 90;
+  ctx.fillStyle = GOLD_BRIGHT;
+  ctx.font = '700 56px "Playfair Display", Georgia, serif';
+  ctx.fillText('¡ESTÁS INVITADO!', W/2, y);
+
+  y += 45;
+  drawDivider(ctx, W/2, y, GOLD);
+
+  y += 60;
+  ctx.fillStyle = CREAM;
+  ctx.font = 'italic 30px Georgia, serif';
+  ctx.fillText('a la fiesta de cumpleaños de', W/2, y);
+
+  y += 65;
+  ctx.fillStyle = GOLD_BRIGHT;
+  ctx.font = '600 46px "Playfair Display", Georgia, serif';
+  ctx.fillText('Alejandro Gómez Córdoba', W/2, y);
+
+  // Bloque del nombre del invitado (1 o 2 líneas)
+  y += 95;
+  ctx.fillStyle = CREAM;
+  ctx.font = nameFontSize + 'px "Great Vibes", cursive';
+  nameLines.forEach((line, i) => {
+    ctx.fillText(line, W/2, y + i * nameLineHeight);
+  });
+  y += (nameLines.length - 1) * nameLineHeight;
+
+  y += 60;
+  ctx.fillStyle = MUTED;
+  ctx.font = 'italic 26px Georgia, serif';
+  ctx.fillText('esperamos que puedas venir', W/2, y);
+
+  y += 60;
+  drawDivider(ctx, W/2, y, GOLD);
+
+  // Detalles del evento
+  y += 90;
+  drawDetailLine(ctx, '📅', PARTY_DATE, W/2, y, CREAM);
+  y += 78;
+  drawDetailLine(ctx, '🕕', PARTY_TIME, W/2, y, CREAM);
+  y += 78;
+  drawDetailLine(ctx, '📍', PARTY_LOCATION, W/2, y, CREAM);
+
+  y += 60;
+  drawDivider(ctx, W/2, y, GOLD);
+
+  y += 60;
+  ctx.fillStyle = MUTED;
+  ctx.font = '28px Georgia, serif';
+  ctx.fillText('¡Nos vemos allí! 🎉', W/2, y);
+
+  // Mostrar preview + habilitar descarga
+  const dataUrl = canvas.toDataURL('image/png');
+  const img = document.getElementById('invitePreview');
+  img.src = dataUrl;
+  img.style.display = 'block';
+  const link = document.getElementById('downloadBtn');
+  link.href = dataUrl;
+  const safeName = (guestName || 'invitado').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-');
+  link.setAttribute('download', 'invitacion-' + safeName + '.png');
+}
+
+function drawDivider(ctx, cx, y, color){
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(cx - 160, y);
+  ctx.lineTo(cx - 18, y);
+  ctx.moveTo(cx + 18, y);
+  ctx.lineTo(cx + 160, y);
+  ctx.stroke();
+  ctx.save();
+  ctx.translate(cx, y);
+  ctx.rotate(Math.PI/4);
+  ctx.fillStyle = color;
+  ctx.fillRect(-6, -6, 12, 12);
+  ctx.restore();
+}
+
+function drawDetailLine(ctx, icon, text, cx, y, textColor){
+  ctx.font = '34px Georgia, serif';
+  ctx.fillStyle = textColor;
+  ctx.fillText(icon + '   ' + text, cx, y);
+}
+
+function wrapText(ctx, text, maxWidth){
+  const words = text.split(' ');
+  let line = '';
+  const lines = [];
+  for (const w of words){
+    const test = line ? line + ' ' + w : w;
+    if (ctx.measureText(test).width > maxWidth && line){
+      lines.push(line);
+      line = w;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
 }
 </script>
 </body>

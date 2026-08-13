@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Respuestas — Menú de cumpleaños de Alejandro</title>
+<style>
+  :root{
+    --gold:#C9A24B;
+    --gold-soft:#8A6E33;
+    --gold-bright:#E9C77B;
+    --cream:#ECE0C8;
+    --muted:#a99a79;
+    --err:#d98a7a;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    min-height:100vh;
+    background:radial-gradient(ellipse at top, #2b241c 0%, #1c1712 55%, #14100c 100%);
+    font-family: Georgia, 'Times New Roman', serif;
+    color:var(--cream);
+    display:flex;
+    justify-content:center;
+    padding:28px 14px 60px;
+  }
+  .sheet{width:100%; max-width:560px;}
+  .frame{border:1.5px solid var(--gold); padding:5px; border-radius:14px;}
+  .frame-inner{border:1px solid var(--gold-soft); border-radius:10px; padding:34px 26px 30px;}
+  .ornament{text-align:center; color:var(--gold); letter-spacing:10px; font-size:15px; margin-bottom:10px;}
+  h1{
+    text-align:center; font-size:24px; letter-spacing:2px;
+    color:var(--gold-bright); text-transform:uppercase; margin:0 0 6px;
+  }
+  .name-title{text-align:center; font-style:italic; font-size:19px; color:var(--cream); margin-bottom:6px;}
+  .count{text-align:center; font-size:13px; color:var(--muted); margin-bottom:10px;}
+  .divider{display:flex; align-items:center; justify-content:center; gap:10px; margin:14px 0 22px;}
+  .divider .line{height:1px; width:70px; background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+  .divider .dot{width:5px; height:5px; background:var(--gold); transform:rotate(45deg);}
+
+  .guest-card{
+    border:1px solid var(--gold-soft);
+    border-radius:9px;
+    padding:14px 16px;
+    margin-bottom:12px;
+    font-size:14px;
+  }
+  .guest-card .gname{color:var(--gold-bright); font-weight:bold; margin-bottom:6px; font-size:16px;}
+  .guest-card div{color:var(--cream); margin-bottom:3px;}
+  .guest-card .lbl{color:var(--muted);}
+  .guest-card .when{color:var(--muted); font-size:11px; margin-top:6px; font-style:italic;}
+
+  .empty, .loading, .err{
+    text-align:center; color:var(--muted); font-style:italic; font-size:14.5px; padding:20px 0;
+  }
+  .err{color:var(--err);}
+
+  .refresh{
+    display:block; margin:20px auto 0;
+    background:none; border:1px solid var(--gold-soft); color:var(--gold-bright);
+    padding:9px 18px; border-radius:8px; font-family:inherit; font-size:13px;
+    letter-spacing:1px; text-transform:uppercase; cursor:pointer;
+  }
+
+  .lock{ text-align:center; padding:10px 0 4px; }
+  .lock p{ color:var(--muted); font-size:14px; margin:0 0 18px; font-style:italic; }
+  .lock input[type=password]{
+    width:100%;
+    background:rgba(255,255,255,0.03);
+    border:1px solid var(--gold-soft);
+    border-radius:8px;
+    padding:12px 14px;
+    color:var(--cream);
+    font-family:Georgia, serif;
+    font-size:20px;
+    letter-spacing:6px;
+    text-align:center;
+    outline:none;
+    margin-bottom:14px;
+  }
+  .lock input[type=password]:focus{
+    border-color:var(--gold);
+    box-shadow:0 0 0 3px rgba(201,162,75,0.15);
+  }
+  .lock button{
+    width:100%;
+    padding:13px;
+    background:linear-gradient(180deg, var(--gold-bright), var(--gold));
+    color:#241d16;
+    border:none;
+    border-radius:9px;
+    font-family:Georgia, serif;
+    font-weight:bold;
+    font-size:15px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    cursor:pointer;
+  }
+  .lock .lock-err{ color:var(--err); font-size:13px; margin-top:10px; min-height:16px; }
+  .content{ display:none; }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <div class="frame"><div class="frame-inner">
+    <div class="ornament">✦ ✦ ✦</div>
+    <h1>Respuestas recibidas</h1>
+    <div class="name-title">Menú de Alejandro Gómez Córdoba</div>
+    <div class="divider"><span class="line"></span><span class="dot"></span><span class="line"></span></div>
+
+    <div class="lock" id="lockScreen">
+      <p>Introduce la clave de organizador para ver las respuestas</p>
+      <form id="lockForm">
+        <input type="password" id="lockInput" inputmode="numeric" autocomplete="off" placeholder="••••••" maxlength="12">
+        <button type="submit">Entrar</button>
+        <div class="lock-err" id="lockErr"></div>
+      </form>
+    </div>
+
+    <div class="content" id="content">
+      <div class="count" id="count"></div>
+      <div id="list"><div class="loading">Cargando respuestas...</div></div>
+      <button class="refresh" id="refreshBtn">Actualizar</button>
+    </div>
+
+  </div></div>
+</div>
+
+<script>
+  // Mismo repositorio que index.html — lectura pública, sin token necesario
+  const GITHUB_OWNER = 'patrigoga';
+  const GITHUB_REPO = 'Menu-cumple';
+  const GITHUB_BRANCH = 'main';
+  const GITHUB_FILE_PATH = 'respuestas.json';
+  const RAW_FILE_URL = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${GITHUB_FILE_PATH}`;
+
+  const listEl = document.getElementById('list');
+  const countEl = document.getElementById('count');
+
+  async function load(){
+    listEl.innerHTML = '<div class="loading">Cargando respuestas...</div>';
+    countEl.textContent = '';
+    try {
+      const res = await fetch(RAW_FILE_URL + '?_=' + Date.now());
+      if (res.status === 404) {
+        listEl.innerHTML = '<div class="empty">Todavía no hay respuestas.</div>';
+        return;
+      }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const entries = await res.json();
+      if (!Array.isArray(entries) || !entries.length){
+        listEl.innerHTML = '<div class="empty">Todavía no hay respuestas.</div>';
+        return;
+      }
+      entries.sort((a,b) => (a.submittedAt || '').localeCompare(b.submittedAt || ''));
+      countEl.textContent = entries.length + (entries.length === 1 ? ' respuesta' : ' respuestas');
+      listEl.innerHTML = entries.map(sub => {
+        const when = sub.submittedAt ? new Date(sub.submittedAt).toLocaleString('es-ES', { dateStyle:'medium', timeStyle:'short' }) : '';
+        return `
+        <div class="guest-card">
+          <div class="gname">${sub.guestName || '—'}</div>
+          <div><span class="lbl">Alergias:</span> ${sub.allergies || '—'}</div>
+          <div><span class="lbl">Entrantes:</span> ${(sub.entrantes && sub.entrantes.length) ? sub.entrantes.join(', ') : '—'}</div>
+          <div><span class="lbl">Tarta:</span> ${sub.tarta || '—'}</div>
+          <div><span class="lbl">Con la tarta:</span> ${sub.tartaBebida || '—'}</div>
+          <div><span class="lbl">Bebida:</span> ${sub.bebidas || '—'}</div>
+          <div><span class="lbl">Para comer:</span> ${sub.comida || '—'}</div>
+          ${when ? `<div class="when">Enviado: ${when}</div>` : ''}
+        </div>`;
+      }).join('');
+    } catch (err) {
+      listEl.innerHTML = '<div class="err">No se pudieron cargar las respuestas. Inténtalo de nuevo.</div>';
+    }
+  }
+
+  document.getElementById('refreshBtn').addEventListener('click', load);
+
+  // Bloqueo por contraseña
+  const PASSCODE = '123456';
+  document.getElementById('lockForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const val = document.getElementById('lockInput').value.trim();
+    if (val === PASSCODE) {
+      document.getElementById('lockScreen').style.display = 'none';
+      document.getElementById('content').style.display = 'block';
+      load();
+    } else {
+      document.getElementById('lockErr').textContent = 'Clave incorrecta.';
+      document.getElementById('lockInput').value = '';
+    }
+  });
+</script>
+</body>
+</html>
