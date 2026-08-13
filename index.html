@@ -190,25 +190,6 @@
   .thanks .recap div{margin-bottom:6px;}
   .thanks .recap b{color:var(--cream); font-weight:normal;}
 
-  .thanks .wa-btn{
-    display:inline-block;
-    margin-top:18px;
-    padding:13px 22px;
-    background:#25D366;
-    color:#0b1a10;
-    border-radius:9px;
-    font-weight:bold;
-    text-decoration:none;
-    font-size:15px;
-    letter-spacing:0.5px;
-  }
-  .thanks .wa-hint{
-    font-size:12.5px;
-    color:var(--muted);
-    margin-top:10px;
-    font-style:italic;
-  }
-
   .footer-note{
     text-align:center;
     margin-top:26px;
@@ -291,17 +272,15 @@
         <div id="grp-comida"></div>
       </div>
 
-      <button type="submit" class="submit" id="submitBtn">Enviar mi elección por WhatsApp</button>
+      <button type="submit" class="submit" id="submitBtn">Confirmar mi elección</button>
       <div class="error-msg" id="errorMsg"></div>
     </form>
 
     <div class="thanks" id="thanksScreen" style="display:none;">
       <div class="big">🎉</div>
       <h2>¡Gracias, <span id="thanksName"></span>!</h2>
-      <p>Se ha abierto WhatsApp con tu elección lista para enviar.</p>
-      <p>Solo tienes que pulsar <b>Enviar</b> allí para confirmar.</p>
-      <a href="#" id="waLink" class="wa-btn" target="_blank" rel="noopener">Abrir WhatsApp de nuevo</a>
-      <div class="wa-hint">Si no se abrió automáticamente, usa el botón de arriba.</div>
+      <p>Tu elección ha sido registrada.</p>
+      <p>Nos vemos en la fiesta de Alejandro.</p>
       <div class="recap" id="recap"></div>
     </div>
 
@@ -370,8 +349,81 @@ function getCheckboxValues(name){
   return Array.from(form.querySelectorAll(`input[name="${name}"]:checked`)).map(i => i.value);
 }
 
-const WHATSAPP_NUMBER = '34635547347'; // Alejandro's organizer — sin '+', sin espacios
-const storageAvailable = typeof window.storage !== 'undefined';
+// ====== CONFIGURACIÓN DE GITHUB ======
+// Rellena estos datos con los tuyos. El token debe ser un "fine-grained token"
+// limitado SOLO al repositorio Menu-cumple, con permiso "Contents: Read and write".
+const GITHUB_OWNER = 'patrigoga';
+const GITHUB_REPO = 'Menu-cumple';
+const GITHUB_BRANCH = 'main';
+const GITHUB_FILE_PATH = 'respuestas.json';
+const GITHUB_TOKEN = 'PEGA_AQUI_TU_TOKEN_github_pat_...';
+// ======================================
+
+const RAW_FILE_URL = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${GITHUB_FILE_PATH}`;
+const API_FILE_URL = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${GITHUB_FILE_PATH}`;
+
+function b64EncodeUnicode(str){
+  return btoa(unescape(encodeURIComponent(str)));
+}
+function b64DecodeUnicode(str){
+  return decodeURIComponent(escape(atob(str)));
+}
+
+async function githubGetFile(){
+  const res = await fetch(`${API_FILE_URL}?ref=${GITHUB_BRANCH}&_=${Date.now()}`, {
+    headers: {
+      'Authorization': `Bearer ${GITHUB_TOKEN}`,
+      'Accept': 'application/vnd.github+json'
+    }
+  });
+  if (res.status === 404) return { sha: null, list: [] };
+  if (!res.ok) throw new Error('No se pudo leer el archivo (HTTP ' + res.status + ')');
+  const data = await res.json();
+  const text = b64DecodeUnicode(data.content.replace(/\n/g, ''));
+  let list = [];
+  try { list = JSON.parse(text); } catch(e) { list = []; }
+  return { sha: data.sha, list: Array.isArray(list) ? list : [] };
+}
+
+async function githubSaveResponse(submission){
+  let lastErr = null;
+  for (let attempt = 0; attempt < 4; attempt++){
+    try {
+      const { sha, list } = await githubGetFile();
+      list.push(submission);
+      const body = {
+        message: `RSVP: ${submission.guestName}`,
+        content: b64EncodeUnicode(JSON.stringify(list, null, 2)),
+        branch: GITHUB_BRANCH,
+      };
+      if (sha) body.sha = sha;
+      const res = await fetch(API_FILE_URL, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github+json'
+        },
+        body: JSON.stringify(body)
+      });
+      if (res.ok) return true;
+      if (res.status === 409) { lastErr = new Error('conflicto, reintentando'); continue; }
+      const errBody = await res.json().catch(() => ({}));
+      throw new Error(errBody.message || ('HTTP ' + res.status));
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr || new Error('No se pudo guardar');
+}
+
+async function githubReadPublic(){
+  // Lectura pública sin token, directamente del archivo raw del repositorio
+  const res = await fetch(RAW_FILE_URL + '?_=' + Date.now());
+  if (res.status === 404) return [];
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const list = await res.json();
+  return Array.isArray(list) ? list : [];
+}
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -396,32 +448,17 @@ form.addEventListener('submit', async (e) => {
     submittedAt: new Date().toISOString()
   };
 
-  const lines = [
-    `🎉 *Menú de cumpleaños — Alejandro Gómez Córdoba*`,
-    ``,
-    `*Nombre:* ${guestName}`,
-    `*Alergias:* ${allergies || 'ninguna'}`,
-    `*Entrantes:* ${entrantes.length ? entrantes.join(', ') : 'ninguno'}`,
-    `*Tarta:* ${tarta}`,
-    `*Con la tarta:* ${tartaBebida}`,
-    `*Bebida:* ${bebidas}`,
-    `*Para comer:* ${comida}`,
-  ];
-  const message = lines.join('\n');
-  const waUrl = 'https://wa.me/' + WHATSAPP_NUMBER + '?text=' + encodeURIComponent(message);
-  document.getElementById('waLink').href = waUrl;
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Guardando...';
 
-  // Try to save for the organizer view — silently skipped if storage isn't available
-  // (e.g. the file was opened directly instead of through the Claude share link)
-  if (storageAvailable) {
-    try {
-      const key = 'rsvp:' + Date.now() + '-' + Math.random().toString(36).slice(2,8);
-      await window.storage.set(key, JSON.stringify(submission), true);
-    } catch (err) { /* saving is best-effort; WhatsApp delivery still works */ }
+  try {
+    await githubSaveResponse(submission);
+    showThanks(submission);
+  } catch (err) {
+    errorMsg.textContent = 'Hubo un problema al guardar tu respuesta. Inténtalo de nuevo en unos segundos.';
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Confirmar mi elección';
   }
-
-  showThanks(submission);
-  window.location.href = waUrl;
 });
 
 function showThanks(sub){
@@ -463,24 +500,12 @@ adminToggle.addEventListener('click', async () => {
 
 async function loadAdmin(){
   const list = document.getElementById('adminList');
-  if (!storageAvailable) {
-    list.innerHTML = '<div class="empty-admin">Esta vista solo funciona cuando la página se abre desde el enlace de Claude, no como archivo suelto.</div>';
-    return;
-  }
   list.innerHTML = '<div class="empty-admin">Cargando...</div>';
   try {
-    const res = await window.storage.list('rsvp:', true);
-    const keys = (res && res.keys) ? res.keys : [];
-    if (!keys.length){
+    const entries = await githubReadPublic();
+    if (!entries.length){
       list.innerHTML = '<div class="empty-admin">Todavía no hay respuestas.</div>';
       return;
-    }
-    const entries = [];
-    for (const k of keys){
-      try {
-        const item = await window.storage.get(k, true);
-        if (item && item.value) entries.push(JSON.parse(item.value));
-      } catch(e) { /* skip unreadable entry */ }
     }
     entries.sort((a,b) => (a.submittedAt || '').localeCompare(b.submittedAt || ''));
     list.innerHTML = entries.map(sub => `
