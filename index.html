@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Menú de cumpleaños — Alejandro Gómez Córdoba</title>
+<style>
+  :root{
+    --bg-0:#14100c;
+    --bg-1:#1c1712;
+    --panel:#241d16;
+    --gold:#C9A24B;
+    --gold-soft:#8A6E33;
+    --gold-bright:#E9C77B;
+    --cream:#ECE0C8;
+    --muted:#a99a79;
+    --ok:#8FC1A9;
+    --err:#d98a7a;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    min-height:100vh;
+    background:
+      radial-gradient(ellipse at top, #2b241c 0%, #1c1712 55%, #14100c 100%);
+    font-family: Georgia, 'Times New Roman', serif;
+    color:var(--cream);
+    display:flex;
+    justify-content:center;
+    padding:28px 14px 60px;
+  }
+  .sheet{
+    width:100%;
+    max-width:520px;
+  }
+  .frame{
+    border:1.5px solid var(--gold);
+    padding:5px;
+    border-radius:14px;
+  }
+  .frame-inner{
+    border:1px solid var(--gold-soft);
+    border-radius:10px;
+    padding:34px 26px 30px;
+  }
+  .ornament{
+    text-align:center;
+    color:var(--gold);
+    letter-spacing:10px;
+    font-size:15px;
+    margin-bottom:10px;
+  }
+  h1{
+    text-align:center;
+    font-size:28px;
+    letter-spacing:2px;
+    color:var(--gold-bright);
+    text-transform:uppercase;
+    margin:0 0 6px;
+  }
+  .name-title{
+    text-align:center;
+    font-style:italic;
+    font-size:21px;
+    color:var(--cream);
+    margin-bottom:10px;
+  }
+  .divider{
+    display:flex;align-items:center;justify-content:center;gap:10px;
+    margin:14px 0 22px;
+  }
+  .divider .line{height:1px;width:70px;background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+  .divider .dot{width:5px;height:5px;background:var(--gold);transform:rotate(45deg);}
+
+  .field{margin-bottom:22px;}
+  label.field-label{
+    display:block;
+    font-family: Georgia, serif;
+    font-weight:bold;
+    font-size:14px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:var(--gold-bright);
+    margin-bottom:8px;
+  }
+  .req{color:var(--err); font-size:12px; margin-left:4px; font-style:italic; text-transform:none; letter-spacing:0;}
+
+  input[type=text], textarea{
+    width:100%;
+    background:rgba(255,255,255,0.03);
+    border:1px solid var(--gold-soft);
+    border-radius:8px;
+    padding:11px 12px;
+    color:var(--cream);
+    font-family: 'Georgia', serif;
+    font-size:16px;
+    outline:none;
+  }
+  input[type=text]:focus, textarea:focus{
+    border-color:var(--gold);
+    box-shadow:0 0 0 3px rgba(201,162,75,0.15);
+  }
+  textarea{resize:vertical; min-height:56px;}
+
+  fieldset{border:none; margin:0; padding:0;}
+  .section-title{
+    display:flex; align-items:center; gap:10px;
+    font-size:15px; letter-spacing:1.5px; text-transform:uppercase;
+    color:var(--gold-bright); font-weight:bold; margin-bottom:10px;
+  }
+  .section-title .icon{font-size:18px;}
+  .section-title::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--gold-soft),transparent);}
+  .sub-note{font-size:13px; font-style:italic; color:var(--muted); margin:10px 0 4px;}
+
+  .opt{
+    display:flex; align-items:center; gap:11px;
+    padding:9px 10px;
+    border-radius:8px;
+    cursor:pointer;
+    transition:background 0.15s ease;
+    font-size:15.5px;
+  }
+  .opt:hover{background:rgba(201,162,75,0.08);}
+  .opt input{position:absolute; opacity:0; width:0; height:0;}
+  .mark{
+    flex:0 0 auto;
+    width:17px; height:17px;
+    border:1.5px solid var(--gold-soft);
+    display:inline-block;
+    position:relative;
+  }
+  .opt input[type=radio] ~ .mark{border-radius:50%;}
+  .opt input[type=checkbox] ~ .mark{border-radius:4px;}
+  .opt input:checked ~ .mark{border-color:var(--gold);}
+  .opt input:checked ~ .mark::after{
+    content:"";
+    position:absolute; inset:3px;
+    background:var(--gold);
+  }
+  .opt input[type=radio]:checked ~ .mark::after{border-radius:50%;}
+  .opt input[type=checkbox]:checked ~ .mark::after{border-radius:2px;}
+  .opt .txt small{color:var(--muted); font-size:12.5px;}
+
+  .allergy-note{
+    font-size:13px; color:var(--muted); font-style:italic; margin-top:6px;
+  }
+
+  button.submit{
+    width:100%;
+    margin-top:8px;
+    padding:15px;
+    background:linear-gradient(180deg, var(--gold-bright), var(--gold));
+    color:#241d16;
+    border:none;
+    border-radius:9px;
+    font-family:Georgia, serif;
+    font-weight:bold;
+    font-size:16px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    cursor:pointer;
+  }
+  button.submit:disabled{opacity:0.6; cursor:default;}
+  button.submit:active{transform:translateY(1px);}
+
+  .error-msg{
+    color:var(--err);
+    font-size:13.5px;
+    text-align:center;
+    margin-top:10px;
+    min-height:16px;
+  }
+
+  .thanks{
+    text-align:center;
+    padding:30px 10px 6px;
+  }
+  .thanks .big{font-size:44px; margin-bottom:8px;}
+  .thanks h2{color:var(--gold-bright); letter-spacing:1.5px; margin:0 0 10px; font-size:22px;}
+  .thanks p{color:var(--cream); font-size:15px; line-height:1.6; margin:0 0 4px;}
+  .thanks .recap{
+    text-align:left;
+    margin-top:22px;
+    border-top:1px solid var(--gold-soft);
+    padding-top:16px;
+    font-size:14.5px;
+    color:var(--muted);
+  }
+  .thanks .recap div{margin-bottom:6px;}
+  .thanks .recap b{color:var(--cream); font-weight:normal;}
+
+  .thanks .wa-btn{
+    display:inline-block;
+    margin-top:18px;
+    padding:13px 22px;
+    background:#25D366;
+    color:#0b1a10;
+    border-radius:9px;
+    font-weight:bold;
+    text-decoration:none;
+    font-size:15px;
+    letter-spacing:0.5px;
+  }
+  .thanks .wa-hint{
+    font-size:12.5px;
+    color:var(--muted);
+    margin-top:10px;
+    font-style:italic;
+  }
+
+  .footer-note{
+    text-align:center;
+    margin-top:26px;
+    font-size:11px;
+    letter-spacing:1px;
+    color:#6c5f47;
+  }
+  .footer-note button{
+    background:none;border:none;color:#6c5f47;font-size:11px;
+    text-decoration:underline; cursor:pointer; letter-spacing:1px;
+    font-family:inherit;
+  }
+
+  .admin{display:none;}
+  .admin.open{display:block;}
+  .admin h3{color:var(--gold-bright); font-size:16px; letter-spacing:1px; margin:0 0 12px; text-transform:uppercase;}
+  .guest-card{
+    border:1px solid var(--gold-soft);
+    border-radius:8px;
+    padding:12px 14px;
+    margin-bottom:10px;
+    font-size:13.5px;
+  }
+  .guest-card .gname{color:var(--gold-bright); font-weight:bold; margin-bottom:4px; font-size:15px;}
+  .guest-card div{color:var(--cream); margin-bottom:2px;}
+  .guest-card .lbl{color:var(--muted);}
+  .empty-admin{color:var(--muted); font-style:italic; font-size:14px;}
+</style>
+</head>
+<body>
+<div class="sheet">
+  <div class="frame"><div class="frame-inner" id="app">
+
+    <div class="ornament">✦ ✦ ✦</div>
+    <h1>Menú de cumpleaños</h1>
+    <div class="name-title">Alejandro Gómez Córdoba</div>
+    <div class="divider"><span class="line"></span><span class="dot"></span><span class="line"></span></div>
+
+    <form id="rsvpForm">
+      <div class="field">
+        <label class="field-label">Tu nombre <span class="req">obligatorio</span></label>
+        <input type="text" id="guestName" placeholder="Nombre y apellidos" autocomplete="name">
+      </div>
+
+      <div class="field">
+        <label class="field-label">Alergias e intolerancias</label>
+        <textarea id="allergies" placeholder="Indica aquí si tienes alguna, o déjalo en blanco"></textarea>
+      </div>
+
+      <div class="field">
+        <div class="section-title"><span class="icon">🍿</span> Entrantes</div>
+        <div class="sub-note">puedes marcar varios</div>
+        <div id="grp-entrantes"></div>
+      </div>
+
+      <div class="field">
+        <div class="section-title"><span class="icon">🎂</span> Tarta</div>
+        <div class="sub-note">elige una <span class="req">obligatorio</span></div>
+        <div id="grp-tarta"></div>
+      </div>
+
+      <div class="field">
+        <div class="section-title"><span class="icon">🍨</span> Para tomar con la tarta</div>
+        <div class="sub-note">elige una opción <span class="req">obligatorio</span></div>
+        <div class="sub-note">Batidos, cacao o café</div>
+        <div id="grp-tarta-bebida-1"></div>
+        <div class="sub-note">Helados</div>
+        <div id="grp-tarta-bebida-2"></div>
+      </div>
+
+      <div class="field">
+        <div class="section-title"><span class="icon">🥤</span> Bebidas</div>
+        <div class="sub-note">elige una <span class="req">obligatorio</span></div>
+        <div id="grp-bebidas"></div>
+      </div>
+
+      <div class="field">
+        <div class="section-title"><span class="icon">🥪</span> Para comer</div>
+        <div class="sub-note">elige una <span class="req">obligatorio</span></div>
+        <div id="grp-comida"></div>
+      </div>
+
+      <button type="submit" class="submit" id="submitBtn">Enviar mi elección por WhatsApp</button>
+      <div class="error-msg" id="errorMsg"></div>
+    </form>
+
+    <div class="thanks" id="thanksScreen" style="display:none;">
+      <div class="big">🎉</div>
+      <h2>¡Gracias, <span id="thanksName"></span>!</h2>
+      <p>Se ha abierto WhatsApp con tu elección lista para enviar.</p>
+      <p>Solo tienes que pulsar <b>Enviar</b> allí para confirmar.</p>
+      <a href="#" id="waLink" class="wa-btn" target="_blank" rel="noopener">Abrir WhatsApp de nuevo</a>
+      <div class="wa-hint">Si no se abrió automáticamente, usa el botón de arriba.</div>
+      <div class="recap" id="recap"></div>
+    </div>
+
+    <div class="footer-note">
+      <button type="button" id="adminToggle">ver respuestas (organizador)</button>
+    </div>
+
+    <div class="admin" id="adminPanel">
+      <div class="divider"><span class="line"></span><span class="dot"></span><span class="line"></span></div>
+      <h3>Respuestas recibidas</h3>
+      <div id="adminList"></div>
+    </div>
+
+  </div></div>
+</div>
+
+<script>
+const OPTIONS = {
+  entrantes: { type:'checkbox', items:['Frutos secos','Patatas fritas saladas','Revuelto salado'] },
+  tarta: { type:'radio', items:['Tarta de chocolate','Tarta de piono'] },
+  tartaBebida1: { type:'radio', name:'tartaBebida', items:['Batido de chocolate','Batido de vainilla','Batido de fresa','Cola Cao fresquito','Café con leche'] },
+  tartaBebida2: { type:'radio', name:'tartaBebida', items:['Helado de chocolate','Helado almendrado','Helado de chocolate blanco'] },
+  bebidas: { type:'radio', items:['Coca-Cola','Coca-Cola Zero','Fanta de naranja','Fanta de limón','Aquarius','Té frío de limón','Agua'] },
+  comida: { type:'radio', items:[
+    'Bocadillo de lomo',
+    'Bocadillo de lomo con queso',
+    'Serranito',
+    {label:'Bocadillo vegetal', note:'lechuga, tomate, queso, jamón de york'},
+    'Hamburguesa'
+  ]}
+};
+
+function renderGroup(containerId, name, type, items){
+  const el = document.getElementById(containerId);
+  items.forEach((it, idx) => {
+    const label = typeof it === 'string' ? it : it.label;
+    const note = typeof it === 'string' ? '' : (it.note ? ' <small>('+it.note+')</small>' : '');
+    const id = name + '_' + idx;
+    const wrap = document.createElement('label');
+    wrap.className = 'opt';
+    wrap.innerHTML = `
+      <input type="${type}" name="${name}" value="${label.replace(/"/g,'&quot;')}" id="${id}">
+      <span class="mark"></span>
+      <span class="txt">${label}${note}</span>
+    `;
+    el.appendChild(wrap);
+  });
+}
+
+renderGroup('grp-entrantes', 'entrantes', 'checkbox', OPTIONS.entrantes.items);
+renderGroup('grp-tarta', 'tarta', 'radio', OPTIONS.tarta.items);
+renderGroup('grp-tarta-bebida-1', 'tartaBebida', 'radio', OPTIONS.tartaBebida1.items);
+renderGroup('grp-tarta-bebida-2', 'tartaBebida', 'radio', OPTIONS.tartaBebida2.items);
+renderGroup('grp-bebidas', 'bebidas', 'radio', OPTIONS.bebidas.items);
+renderGroup('grp-comida', 'comida', 'radio', OPTIONS.comida.items);
+
+const form = document.getElementById('rsvpForm');
+const errorMsg = document.getElementById('errorMsg');
+const submitBtn = document.getElementById('submitBtn');
+
+function getRadioValue(name){
+  const checked = form.querySelector(`input[name="${name}"]:checked`);
+  return checked ? checked.value : null;
+}
+function getCheckboxValues(name){
+  return Array.from(form.querySelectorAll(`input[name="${name}"]:checked`)).map(i => i.value);
+}
+
+const WHATSAPP_NUMBER = '34635547347'; // Alejandro's organizer — sin '+', sin espacios
+const storageAvailable = typeof window.storage !== 'undefined';
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  errorMsg.textContent = '';
+
+  const guestName = document.getElementById('guestName').value.trim();
+  const allergies = document.getElementById('allergies').value.trim();
+  const entrantes = getCheckboxValues('entrantes');
+  const tarta = getRadioValue('tarta');
+  const tartaBebida = getRadioValue('tartaBebida');
+  const bebidas = getRadioValue('bebidas');
+  const comida = getRadioValue('comida');
+
+  if (!guestName){ errorMsg.textContent = 'Por favor, indica tu nombre.'; return; }
+  if (!tarta){ errorMsg.textContent = 'Elige una tarta.'; return; }
+  if (!tartaBebida){ errorMsg.textContent = 'Elige qué tomar con la tarta.'; return; }
+  if (!bebidas){ errorMsg.textContent = 'Elige una bebida.'; return; }
+  if (!comida){ errorMsg.textContent = 'Elige qué quieres comer.'; return; }
+
+  const submission = {
+    guestName, allergies, entrantes, tarta, tartaBebida, bebidas, comida,
+    submittedAt: new Date().toISOString()
+  };
+
+  const lines = [
+    `🎉 *Menú de cumpleaños — Alejandro Gómez Córdoba*`,
+    ``,
+    `*Nombre:* ${guestName}`,
+    `*Alergias:* ${allergies || 'ninguna'}`,
+    `*Entrantes:* ${entrantes.length ? entrantes.join(', ') : 'ninguno'}`,
+    `*Tarta:* ${tarta}`,
+    `*Con la tarta:* ${tartaBebida}`,
+    `*Bebida:* ${bebidas}`,
+    `*Para comer:* ${comida}`,
+  ];
+  const message = lines.join('\n');
+  const waUrl = 'https://wa.me/' + WHATSAPP_NUMBER + '?text=' + encodeURIComponent(message);
+  document.getElementById('waLink').href = waUrl;
+
+  // Try to save for the organizer view — silently skipped if storage isn't available
+  // (e.g. the file was opened directly instead of through the Claude share link)
+  if (storageAvailable) {
+    try {
+      const key = 'rsvp:' + Date.now() + '-' + Math.random().toString(36).slice(2,8);
+      await window.storage.set(key, JSON.stringify(submission), true);
+    } catch (err) { /* saving is best-effort; WhatsApp delivery still works */ }
+  }
+
+  showThanks(submission);
+  window.location.href = waUrl;
+});
+
+function showThanks(sub){
+  form.style.display = 'none';
+  document.getElementById('thanksScreen').style.display = 'block';
+  document.getElementById('thanksName').textContent = sub.guestName;
+  const recap = document.getElementById('recap');
+  const rows = [
+    ['Alergias', sub.allergies || '—'],
+    ['Entrantes', sub.entrantes.length ? sub.entrantes.join(', ') : '—'],
+    ['Tarta', sub.tarta],
+    ['Con la tarta', sub.tartaBebida],
+    ['Bebida', sub.bebidas],
+    ['Para comer', sub.comida],
+  ];
+  recap.innerHTML = rows.map(r => `<div><span class="lbl">${r[0]}:</span> <b>${r[1]}</b></div>`).join('');
+}
+
+// Organizer view
+const adminToggle = document.getElementById('adminToggle');
+const adminPanel = document.getElementById('adminPanel');
+
+adminToggle.addEventListener('click', async () => {
+  const opening = !adminPanel.classList.contains('open');
+  if (opening) {
+    const code = window.prompt('Introduce la clave de organizador:');
+    if (code === null) return;
+    if (code.trim() !== '123456') {
+      alert('Clave incorrecta.');
+      return;
+    }
+  }
+  adminPanel.classList.toggle('open');
+  adminToggle.textContent = opening ? 'ocultar respuestas' : 'ver respuestas (organizador)';
+  if (opening) {
+    await loadAdmin();
+  }
+});
+
+async function loadAdmin(){
+  const list = document.getElementById('adminList');
+  if (!storageAvailable) {
+    list.innerHTML = '<div class="empty-admin">Esta vista solo funciona cuando la página se abre desde el enlace de Claude, no como archivo suelto.</div>';
+    return;
+  }
+  list.innerHTML = '<div class="empty-admin">Cargando...</div>';
+  try {
+    const res = await window.storage.list('rsvp:', true);
+    const keys = (res && res.keys) ? res.keys : [];
+    if (!keys.length){
+      list.innerHTML = '<div class="empty-admin">Todavía no hay respuestas.</div>';
+      return;
+    }
+    const entries = [];
+    for (const k of keys){
+      try {
+        const item = await window.storage.get(k, true);
+        if (item && item.value) entries.push(JSON.parse(item.value));
+      } catch(e) { /* skip unreadable entry */ }
+    }
+    entries.sort((a,b) => (a.submittedAt || '').localeCompare(b.submittedAt || ''));
+    list.innerHTML = entries.map(sub => `
+      <div class="guest-card">
+        <div class="gname">${sub.guestName}</div>
+        <div><span class="lbl">Alergias:</span> ${sub.allergies || '—'}</div>
+        <div><span class="lbl">Entrantes:</span> ${(sub.entrantes && sub.entrantes.length) ? sub.entrantes.join(', ') : '—'}</div>
+        <div><span class="lbl">Tarta:</span> ${sub.tarta}</div>
+        <div><span class="lbl">Con la tarta:</span> ${sub.tartaBebida}</div>
+        <div><span class="lbl">Bebida:</span> ${sub.bebidas}</div>
+        <div><span class="lbl">Para comer:</span> ${sub.comida}</div>
+      </div>
+    `).join('');
+  } catch (err){
+    list.innerHTML = '<div class="empty-admin">No se pudieron cargar las respuestas.</div>';
+  }
+}
+</script>
+</body>
+</html>
